@@ -43,7 +43,8 @@ public class BackportsResource {
     public static class Templates {
         public static native TemplateInstance index(String repository, Collection<Milestone> milestones);
 
-        public static native TemplateInstance backports(Milestone milestone, Collection<PullRequest> prs, String label, String repository);
+        public static native TemplateInstance backports(Milestone milestone, Collection<PullRequest> prsToBackport,
+                Collection<PullRequest> openPrsTargetingBranch, String pullRequestsForBackportLabelUrl);
 
         public static native TemplateInstance createStatusOptionForMilestone(ProjectV2 projectV2, Milestone milestone,
                 String statusFieldSettingsUrl, String refreshStatusFieldUrl);
@@ -60,14 +61,17 @@ public class BackportsResource {
     @GET
     @Path("/backports/{milestone}/")
     @Produces(MediaType.TEXT_HTML)
-    @CacheInvalidateAll(cacheName = CacheNames.PULLREQUESTS_CACHE_NAME)
+    @CacheInvalidateAll(cacheName = CacheNames.PULL_REQUESTS_TO_BACKPORT_CACHE_NAME)
     @Blocking
     public TemplateInstance backports(@NotNull(message = "Invalid Milestone") @RestPath final Milestone milestone)
             throws IOException {
+        gitHub.clearPullRequestCache();
+
         ProjectV2 projectV2 = gitHub.prepareRequirements(milestone);
 
         if (gitHub.isMilestonePresentInStatusField(projectV2.id, milestone)) {
-            return Templates.backports(milestone, gitHub.getBackportCandidatesPullRequests(), label, repository);
+            return Templates.backports(milestone, gitHub.getBackportCandidatesPullRequests(),
+                    gitHub.getPullRequestsTargetingBranch(milestone), gitHub.getPullRequestsForBackportLabelUrl());
         } else {
             return Templates.createStatusOptionForMilestone(projectV2, milestone,
                     gitHub.getStatusFieldSettingsUrl(projectV2.number),
@@ -105,6 +109,16 @@ public class BackportsResource {
         pullRequest.commits.forEach(commit -> {
             Log.info("    Backported commit: URL=" + commit.url + ", message=" + commit.message);
         });
+        return "SUCCESS";
+    }
+
+    @GET
+    @Produces(MediaType.TEXT_PLAIN)
+    @Path("/backports/{milestone}/merged/{pullRequest}/")
+    @Blocking
+    public String markAsMerged(@NotNull(message = "Invalid Milestone") @RestPath Milestone milestone,
+            @NotNull(message = "Invalid Pull Request") @RestPath PullRequest pullRequest) throws IOException {
+        gitHub.markPullRequestAsMerged(pullRequest, milestone);
         return "SUCCESS";
     }
 
