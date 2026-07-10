@@ -1,5 +1,5 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
-//DEPS io.quarkus.platform:quarkus-bom:3.36.1@pom
+//DEPS io.quarkus.platform:quarkus-bom:3.37.2@pom
 //DEPS io.quarkus:quarkus-jackson
 //DEPS io.quarkus:quarkus-picocli
 
